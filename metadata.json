@@ -1,0 +1,6 @@
+{
+  "name": "Lunaris - 2D Lunar Landing Simulation",
+  "description": "A Computer Graphics 2D lunar landing simulation featuring vector-drawn lunar modules, procedural terrain geometry, and mission briefing systems.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
