@@ -4,7 +4,7 @@
  * Organized to support modular physics, transformations, rendering, and collision detection.
  */
 
-export type GameView = 'MENU' | 'BRIEFING' | 'SIMULATION';
+export type GameView = 'MENU' | 'BRIEFING' | 'SIMULATION' | 'LEVEL_SELECT' | 'TRANSFORM_LAB';
 
 export type SimulationStatus = 'FLYING' | 'LANDED' | 'CRASHED' | 'PAUSED';
 

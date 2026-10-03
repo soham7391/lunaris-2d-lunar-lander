@@ -5,6 +5,7 @@
  */
 
 import { TerrainPoint, LandingPad } from '../types/game';
+import { LevelConfig, LevelTheme } from '../physics/levels';
 
 export interface TerrainProfile {
   points: TerrainPoint[];
@@ -12,24 +13,37 @@ export interface TerrainProfile {
 }
 
 /**
- * Generates a piecewise lunar terrain profile with a designated flat landing site.
+ * Generates a piecewise lunar terrain profile with a designated flat landing site,
+ * configured to match the active level's topography and pad boundaries.
  */
-export function generateTerrain(width: number, height: number): TerrainProfile {
+export function generateTerrain(
+  width: number,
+  height: number,
+  level?: LevelConfig
+): TerrainProfile {
   const points: TerrainPoint[] = [];
-  const segments = 32;
+  const segments = 36;
   const step = width / segments;
 
-  // Designate landing pad location (wide beginner-friendly pad ~28% of viewport)
-  const padStartX = Math.floor(width * 0.36);
-  const padEndX = Math.floor(width * 0.64);
-  const padY = height * 0.78;
+  // Designate landing pad location according to level config (or default wide pad)
+  const padStartXRatio = level?.padStartXRatio ?? 0.36;
+  const padEndXRatio = level?.padEndXRatio ?? 0.64;
+  const padYRatio = level?.padYRatio ?? 0.78;
+  const padLabel = level?.padLabel ?? 'TRANQUILLITY BASE · SITE ALPHA';
+
+  const padStartX = Math.floor(width * padStartXRatio);
+  const padEndX = Math.floor(width * padEndXRatio);
+  const padY = height * padYRatio;
 
   const landingPad: LandingPad = {
     startX: padStartX,
     endX: padEndX,
     y: padY,
-    label: 'TRANQUILLITY BASE · SITE ALPHA',
+    label: padLabel,
   };
+
+  const roughness = level?.terrainRoughness ?? 0.6;
+  const craterDepth = level?.craterDepth ?? 20;
 
   // Build piecewise terrain points
   for (let i = 0; i <= segments; i++) {
@@ -39,16 +53,17 @@ export function generateTerrain(width: number, height: number): TerrainProfile {
       // Perfectly flat landing pad elevation
       points.push({ x, y: padY });
     } else {
-      // Natural jagged cratered profile
+      // Piecewise terrain profile parameterized by level topography
       const distFromCenter = Math.abs(x - width * 0.5);
       const elevationVar =
-        Math.sin(i * 0.8) * 32 +
-        Math.cos(i * 1.7) * 22 +
-        Math.sin(i * 3.4) * 12;
+        Math.sin(i * 0.75) * (craterDepth * 1.1) +
+        Math.cos(i * 1.6) * (craterDepth * 0.8) +
+        Math.sin(i * 3.2) * (craterDepth * 0.45 * roughness);
 
       // Higher crags at left and right boundaries
-      const edgeBoost = Math.max(0, (distFromCenter - width * 0.25) * 0.08);
-      const y = height * 0.76 + elevationVar - edgeBoost;
+      const edgeBoost = Math.max(0, (distFromCenter - width * 0.22) * (0.09 * roughness));
+      const baseY = height * (padYRatio - 0.02);
+      const y = baseY + elevationVar - edgeBoost;
       points.push({ x, y });
     }
   }
@@ -58,13 +73,14 @@ export function generateTerrain(width: number, height: number): TerrainProfile {
 }
 
 /**
- * Draws the lunar terrain surface and designated landing pad.
+ * Draws the lunar terrain surface and designated landing pad with level-specific theme colors.
  */
 export function drawTerrain(
   ctx: CanvasRenderingContext2D,
   terrain: TerrainProfile,
   timeMs: number = 0,
-  showDebugNormals: boolean = false
+  showDebugNormals: boolean = false,
+  theme?: LevelTheme
 ): void {
   const { width, height } = ctx.canvas;
   const { points, landingPad } = terrain;
@@ -83,11 +99,12 @@ export function drawTerrain(
   ctx.lineTo(0, height);
   ctx.closePath();
 
-  // Dark lunar regolith gradient
+  // Level-specific regolith gradient
   const terrainGrad = ctx.createLinearGradient(0, height * 0.65, 0, height);
-  terrainGrad.addColorStop(0, '#1e293b');
-  terrainGrad.addColorStop(0.35, '#0f172a');
-  terrainGrad.addColorStop(1, '#020617');
+  const colors = theme?.terrainGradient ?? ['#1e293b', '#0f172a', '#020617'];
+  terrainGrad.addColorStop(0, colors[0]);
+  terrainGrad.addColorStop(0.35, colors[1]);
+  terrainGrad.addColorStop(1, colors[2]);
   ctx.fillStyle = terrainGrad;
   ctx.fill();
 
@@ -97,12 +114,12 @@ export function drawTerrain(
   for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i].x, points[i].y);
   }
-  ctx.strokeStyle = '#64748b';
+  ctx.strokeStyle = theme?.terrainRidgeColor ?? '#64748b';
   ctx.lineWidth = 2;
   ctx.stroke();
 
   // 3. Landing Pad Structure & Visual Guidance
-  drawLandingPad(ctx, landingPad, timeMs);
+  drawLandingPad(ctx, landingPad, timeMs, theme);
 
   // 4. Computer Graphics Debug: Segment Normals (Ready for collision detection)
   if (showDebugNormals) {
@@ -118,7 +135,8 @@ export function drawTerrain(
 function drawLandingPad(
   ctx: CanvasRenderingContext2D,
   pad: LandingPad,
-  timeMs: number
+  timeMs: number,
+  theme?: LevelTheme
 ): void {
   const { startX, endX, y } = pad;
   const padWidth = endX - startX;
@@ -126,11 +144,11 @@ function drawLandingPad(
   ctx.save();
 
   // Concrete/Titanium Pad Slab
-  ctx.fillStyle = '#1e293b';
+  ctx.fillStyle = theme?.padSlabColor ?? '#1e293b';
   ctx.fillRect(startX, y, padWidth, 12);
 
   // Top Surface Border
-  ctx.strokeStyle = '#38bdf8';
+  ctx.strokeStyle = theme?.padBorderColor ?? '#38bdf8';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(startX, y);
@@ -143,7 +161,7 @@ function drawLandingPad(
   ctx.rect(startX, y, padWidth, 8);
   ctx.clip();
 
-  ctx.strokeStyle = '#f59e0b';
+  ctx.strokeStyle = theme?.padChevronColor ?? '#f59e0b';
   ctx.lineWidth = 4;
   for (let sx = startX - 20; sx < endX + 20; sx += 18) {
     ctx.beginPath();
@@ -155,7 +173,7 @@ function drawLandingPad(
 
   // Center Touchdown Target Reticle (+)
   const centerX = (startX + endX) * 0.5;
-  ctx.strokeStyle = '#22c55e';
+  ctx.strokeStyle = theme?.padBorderColor ?? '#22c55e';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(centerX - 16, y);
@@ -167,15 +185,15 @@ function drawLandingPad(
   // Pulsing Landing Beacons (Left & Right)
   const pulse = (Math.sin(timeMs * 0.005) + 1) * 0.5; // 0 to 1
 
-  // Left Beacon (Port: Amber)
-  drawBeacon(ctx, startX, y, '#f59e0b', pulse);
+  // Left Beacon (Port)
+  drawBeacon(ctx, startX, y, theme?.beaconColorPort ?? '#f59e0b', pulse);
 
-  // Right Beacon (Starboard: Emerald Green)
-  drawBeacon(ctx, endX, y, '#10b981', pulse);
+  // Right Beacon (Starboard)
+  drawBeacon(ctx, endX, y, theme?.beaconColorStarboard ?? '#10b981', pulse);
 
   // Landing Site Designation Label
   ctx.font = '10px "JetBrains Mono", monospace';
-  ctx.fillStyle = '#94a3b8';
+  ctx.fillStyle = theme?.padLabelColor ?? '#94a3b8';
   ctx.textAlign = 'center';
   ctx.fillText(pad.label, centerX, y + 26);
 

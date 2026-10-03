@@ -119,12 +119,87 @@ export const ProjectSpecsModal: React.FC<ProjectSpecsModalProps> = ({ isOpen, on
             </div>
           </div>
 
-          {/* Calibrated Flight Status Notice */}
-          <div className="flex items-start gap-3 p-3.5 bg-emerald-950/40 border border-emerald-800/60 rounded-lg text-emerald-200 text-xs">
-            <ShieldAlert className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold block mb-0.5">Beginner-Tuned Flight Mechanics:</span>
-              Descent gravity, engine thrust-to-weight ratio (2.67:1), attitude rotation damping, and landing pad width (28% viewport) are calibrated to ensure a rewarding, controllable lunar descent while preserving strict Newtonian equations.
+          {/* Section 4: Multi-Level Architecture & Procedural Topography */}
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-cyan-400 flex items-center gap-2">
+              <Layers className="w-4 h-4" />
+              04. Multi-Sector Campaign Architecture & Procedural Topography
+            </h3>
+            <p className="text-slate-300 leading-relaxed text-xs">
+              LUNARIS includes three distinct progressive sectors, each parameterized with custom terrain roughness, crater depth, landing pad span, background star/nebula gradients, and celestial backdrops:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs font-mono">
+              <div className="p-3 bg-slate-900/80 rounded-lg border border-cyan-900/60">
+                <span className="text-cyan-400 font-bold block">LEVEL 1 · EASY</span>
+                <span className="text-[11px] text-slate-300 block font-sans">Mare Tranquillitatis</span>
+                <span className="text-[10px] text-slate-500 block mt-1">Wide central pad (28%), smooth basalt profile, Earthrise backdrop.</span>
+              </div>
+              <div className="p-3 bg-slate-900/80 rounded-lg border border-amber-900/60">
+                <span className="text-amber-400 font-bold block">LEVEL 2 · MEDIUM</span>
+                <span className="text-[11px] text-slate-300 block font-sans">Oceanus Procellarum</span>
+                <span className="text-[10px] text-slate-500 block mt-1">Offset starboard pad (20%), rolling terrain, Jupiter celestial theme.</span>
+              </div>
+              <div className="p-3 bg-slate-900/80 rounded-lg border border-rose-900/60">
+                <span className="text-rose-400 font-bold block">LEVEL 3 · HARD</span>
+                <span className="text-[11px] text-slate-300 block font-sans">Tycho Crater Basin</span>
+                <span className="text-[10px] text-slate-500 block mt-1">Narrow pad (12%), hazardous crag walls, Mars orbital theme.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: CG 2D Transformation Laboratory */}
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-amber-400 flex items-center gap-2">
+              <Cpu className="w-4 h-4" />
+              05. Computer Graphics 2D Transformation Laboratory
+            </h3>
+            <p className="text-slate-300 leading-relaxed text-xs">
+              The embedded <strong>CG Transform Lab</strong> provides an interactive experimental sandbox to inspect and manipulate 2D affine transformations using homogeneous coordinates:
+            </p>
+            <div className="bg-slate-900/90 rounded-lg p-3 border border-slate-800 font-mono text-[11px] text-slate-300 space-y-2">
+              <div>
+                <span className="text-cyan-400 font-bold">2D Homogeneous Matrix:</span>
+                <pre className="text-slate-400 text-[10px] mt-0.5">
+                  [ x' ]   [ a  c  tx ] [ x ]
+                  [ y' ] = [ b  d  ty ] [ y ]
+                  [ 1  ]   [ 0  0  1  ] [ 1 ]
+                </pre>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px]">
+                <div><span className="text-white">Translation:</span> [1 0 tx; 0 1 ty; 0 0 1]</div>
+                <div><span className="text-white">Rotation:</span> [cos -sin 0; sin cos 0; 0 0 1]</div>
+                <div><span className="text-white">Shear:</span> [1 shx 0; shy 1 0; 0 0 1]</div>
+                <div><span className="text-white">Reflection:</span> Axis flips (-1 scale factor)</div>
+              </div>
+              <div className="pt-1 text-[10px] text-amber-300/90 border-t border-slate-800">
+                Non-Commutativity Demonstration: Composing T · R · S produces a different world-space configuration than R · T · S due to non-commutative matrix multiplication.
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: Verification & Test Plan */}
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-emerald-400 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" />
+              06. Academic Verification & Test Plan
+            </h3>
+            <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800 space-y-1.5 text-xs text-slate-300">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span><strong>Kinematics & Euler Integration:</strong> Validated time-delta updates with $\Delta t$ clamping to avoid tunnel artifacts.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span><strong>Collision Bounds:</strong> Footpads, cabin hull, and engine nozzle tested against interpolated piecewise segments.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span><strong>Progressive Unlock Persistence:</strong> Unlocked levels stored in client localStorage across reloads.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span><strong>Canvas Matrix Correctness:</strong> Native Canvas <code>ctx.setTransform(a,b,c,d,e,f)</code> verified against calculated algebraic matrices.</span>
+              </div>
             </div>
           </div>
         </div>

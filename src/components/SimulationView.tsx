@@ -1,16 +1,8 @@
 /**
  * @file SimulationView.tsx
  * Core playable 2D Lunar Landing Simulation for LUNARIS.
- * 
- * Features:
- * - Real-time Newtonian physics loop with elapsed-time-based semi-implicit Euler integration
- * - Lunar gravity, main engine vector thrust, attitude rotation, and fuel depletion
- * - Multi-vertex collision detection against piecewise terrain and landing pad
- * - Apollo LEM landing tolerance verification (descent rate, lateral drift, tilt angle)
- * - Complete keyboard controls (W/Space thrust, A/D rotate, P pause, R restart)
- * - On-screen touch/mouse flight controls for responsive interaction
- * - Real-time avionics telemetry HUD with color-coded safe envelope indicators
- * - Pause and mission completion (Success/Crash) modals with detailed debriefing
+ * Supports multiple difficulty levels, level-specific themes, scoring,
+ * HUD accents, and navigation to the CG Transform Lab and Level Selector.
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -28,7 +20,12 @@ import {
   Fuel, 
   Target,
   ShieldCheck,
-  RotateCw
+  RotateCw,
+  Cpu,
+  Layers,
+  ArrowRight,
+  Award,
+  Sparkles
 } from 'lucide-react';
 import { generateStarfield, drawStarfield, Star } from '../graphics/drawStarfield';
 import { generateTerrain, drawTerrain, TerrainProfile } from '../graphics/drawTerrain';
@@ -41,16 +38,29 @@ import {
   InputState,
   updateSimulationPhysics,
   calculateRadarAltitude,
-  transformLocalToWorld,
-  LANDER_LOCAL_VERTICES,
 } from '../physics/simulationEngine';
+import { 
+  LevelConfig, 
+  LEVELS, 
+  calculateMissionScore, 
+  unlockLevel, 
+  MissionScoreBreakdown 
+} from '../physics/levels';
 
 interface SimulationViewProps {
+  currentLevel: LevelConfig;
+  onSelectLevel: (level: LevelConfig) => void;
+  onOpenLevelSelect: () => void;
+  onOpenTransformLab: () => void;
   onReturnToMenu: () => void;
   onOpenBriefing: () => void;
 }
 
 export const SimulationView: React.FC<SimulationViewProps> = ({
+  currentLevel,
+  onSelectLevel,
+  onOpenLevelSelect,
+  onOpenTransformLab,
   onReturnToMenu,
   onOpenBriefing,
 }) => {
@@ -80,8 +90,8 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
 
   // Simulation physics state
   const [landerState, setLanderState] = useState<LanderPhysicsState>(() => ({
-    position: { x: 500, y: 140 },
-    velocity: { x: 8, y: 12 },
+    position: { x: 500, y: 80 },
+    velocity: { x: currentLevel.initialVx, y: currentLevel.initialVy },
     rotation: 0,
     scale: 1.1,
     fuel: SIMULATION_CONFIG.INITIAL_FUEL_PERCENT,
@@ -103,7 +113,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
   // Flight guidance tip banner for beginners
   const [showFlightTip, setShowFlightTip] = useState<boolean>(true);
 
-  // Reset simulation to initial spawn state
+  // Computed score breakdown when landing succeeds
+  const [landingScore, setLandingScore] = useState<MissionScoreBreakdown | null>(null);
+
+  // Reset simulation to initial spawn state for the active level
   const restartSimulation = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -111,13 +124,13 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
     const width = canvas.width;
     const height = canvas.height;
 
-    // Spawn high above the landing pad with plenty of reaction room and zero lateral drift
-    const initialX = width * 0.5;
-    const initialY = Math.max(70, Math.floor(height * 0.12));
+    // Spawn according to level parameters
+    const initialX = Math.floor(width * currentLevel.initialLanderXRatio);
+    const initialY = Math.max(65, Math.floor(height * currentLevel.initialLanderYRatio));
 
     const freshState: LanderPhysicsState = {
       position: { x: initialX, y: initialY },
-      velocity: { x: 0, y: 4 }, // Very gentle descent ingress (~0.5 m/s)
+      velocity: { x: currentLevel.initialVx, y: currentLevel.initialVy },
       rotation: 0,
       scale: 1.1,
       fuel: SIMULATION_CONFIG.INITIAL_FUEL_PERCENT,
@@ -132,8 +145,9 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
     inputRef.current = { thrust: false, rotateLeft: false, rotateRight: false };
     landerStateRef.current = freshState;
     setLanderState(freshState);
+    setLandingScore(null);
     lastTimeRef.current = performance.now();
-  }, []);
+  }, [currentLevel]);
 
   // Toggle pause/unpause
   const togglePause = useCallback(() => {
@@ -147,7 +161,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
     });
   }, []);
 
-  // Initialize scene dimensions and terrain
+  // Initialize scene dimensions and terrain for the active level
   const setupScene = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -156,11 +170,11 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
     const width = (canvas.width = container.clientWidth);
     const height = (canvas.height = container.clientHeight);
 
-    starsRef.current = generateStarfield(width, height, 180);
-    terrainRef.current = generateTerrain(width, height);
+    starsRef.current = generateStarfield(width, height, 200);
+    terrainRef.current = generateTerrain(width, height, currentLevel);
 
     restartSimulation();
-  }, [restartSimulation]);
+  }, [currentLevel, restartSimulation]);
 
   useEffect(() => {
     setupScene();
@@ -171,7 +185,6 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
   // Keyboard controls listener with preventDefault for gameplay keys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent page scrolling on navigation keys
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
         e.preventDefault();
       }
@@ -252,6 +265,20 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
         // Update radar altitude
         const alt = calculateRadarAltitude(nextState, currentTerrain.points);
         setRadarAltitude(alt);
+
+        // Trigger score calculation and progressive unlock if landed
+        if (nextState.status === 'LANDED') {
+          const vy = nextState.velocity.y / SIMULATION_CONFIG.PIXELS_PER_METER;
+          const vx = Math.abs(nextState.velocity.x) / SIMULATION_CONFIG.PIXELS_PER_METER;
+          const tilt = Math.abs((nextState.rotation * 180) / Math.PI);
+          const score = calculateMissionScore(nextState.fuel, vy, vx, tilt, currentLevel);
+          setLandingScore(score);
+
+          // Unlock subsequent sector
+          if (currentLevel.id < 3) {
+            unlockLevel(currentLevel.id + 1);
+          }
+        }
       }
 
       const currentState = landerStateRef.current;
@@ -259,11 +286,15 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
       // 2. Clear Screen
       ctx.clearRect(0, 0, width, height);
 
-      // 3. Render Starfield & Celestial Backdrop
+      // 3. Render Level-Themed Starfield & Celestial Backdrop
       drawStarfield(ctx, starsRef.current, currentTime, {
         showEarthCrescent: true,
         earthX: width * 0.12,
         earthY: 80,
+        spaceGradient: currentLevel.theme.spaceGradient,
+        nebulaColor: currentLevel.theme.nebulaColor,
+        nebulaCenter: currentLevel.theme.nebulaCenter,
+        celestialBody: currentLevel.theme.celestialBody,
       });
 
       // 4. World Coordinate Grid (Computer Graphics overlay)
@@ -273,7 +304,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
 
       // 5. Piecewise Terrain & Designated Landing Pad
       if (currentTerrain) {
-        drawTerrain(ctx, currentTerrain, currentTime, showTerrainNormals);
+        drawTerrain(ctx, currentTerrain, currentTime, showTerrainNormals, currentLevel.theme);
 
         // Altitude projection line
         const padY = currentTerrain.landingPad.y;
@@ -314,7 +345,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [debugOptions, showTerrainNormals]);
+  }, [debugOptions, showTerrainNormals, currentLevel]);
 
   // Helper: Draw visual crash wreckage & spark geometry
   const drawCrashExplosion = (
@@ -351,12 +382,15 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
   const isVxSafe = Math.abs(vxMs) <= SIMULATION_CONFIG.MAX_LANDING_HORIZONTAL_SPEED_MS;
   const isPitchSafe = Math.abs(pitchDeg) <= SIMULATION_CONFIG.MAX_LANDING_TILT_DEG;
 
+  // Next level helper
+  const nextLevel = LEVELS.find((l) => l.id === currentLevel.id + 1);
+
   return (
     <div className="h-screen w-screen flex flex-col bg-[#04060d] text-slate-100 overflow-hidden select-none">
       {/* Top Header Bar */}
       <header className="h-14 px-4 sm:px-6 bg-[#060a14] border-b border-slate-800 flex items-center justify-between z-20 shrink-0">
         {/* Left: Navigation Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onReturnToMenu}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
@@ -366,11 +400,21 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
           </button>
 
           <button
-            onClick={onOpenBriefing}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+            onClick={onOpenLevelSelect}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 hover:text-cyan-200 border border-slate-800 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+            title="Open Campaign Level Selector"
           >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Briefing</span>
+            <Layers className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sectors</span>
+          </button>
+
+          <button
+            onClick={onOpenTransformLab}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-slate-800 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+            title="Open Computer Graphics Transform Lab"
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Transform Lab</span>
           </button>
 
           <button
@@ -379,18 +423,18 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
             title="Restart Descent (Key: R)"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Restart (R)</span>
+            <span className="hidden sm:inline">Restart (R)</span>
           </button>
         </div>
 
-        {/* Center: Flight Status Tag */}
+        {/* Center: Flight Sector & Level Title */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase">
-            LUNARIS
+          <span className={`text-xs font-mono font-bold tracking-widest uppercase ${currentLevel.theme.hudAccentColor}`}>
+            LEVEL 0{currentLevel.id}: {currentLevel.name}
           </span>
-          <span className="text-xs text-slate-600">/</span>
-          <span className="text-xs font-mono text-slate-300 hidden md:inline">
-            DESCENT STAGE · SITE ALPHA
+          <span className="text-xs text-slate-600 hidden md:inline">/</span>
+          <span className="text-xs font-mono text-slate-400 hidden md:inline">
+            {currentLevel.sector}
           </span>
         </div>
 
@@ -461,8 +505,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
         <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
           {landerState.status === 'FLYING' && (
             <>
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-              <span className="text-cyan-300">ACTIVE FLIGHT KINEMATICS · W/Space = Thrust, A/D = Pitch Roll</span>
+              <span className={`w-2 h-2 rounded-full ${currentLevel.theme.hudAccentColor === 'text-cyan-400' ? 'bg-cyan-400' : currentLevel.theme.hudAccentColor === 'text-amber-400' ? 'bg-amber-400' : 'bg-rose-500'} animate-pulse`}></span>
+              <span className="text-slate-300">
+                ACTIVE DESCENT · Level 0{currentLevel.id} ({currentLevel.difficulty}) · W/Space = Thrust, A/D = Roll
+              </span>
             </>
           )}
           {landerState.status === 'PAUSED' && (
@@ -474,21 +520,19 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
           {landerState.status === 'LANDED' && (
             <>
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-emerald-300 font-bold">TOUCHDOWN NOMINAL · Lunar module secure at Tranquillity Base</span>
+              <span className="text-emerald-300 font-bold">TOUCHDOWN CONFIRMED · Mission Objective Accomplished</span>
             </>
           )}
           {landerState.status === 'CRASHED' && (
             <>
               <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-              <span className="text-rose-400 font-bold">IMPACT DETECTED · Vehicle structural limits exceeded</span>
+              <span className="text-rose-400 font-bold">IMPACT DETECTED · Vehicle structural envelope breached</span>
             </>
           )}
         </div>
 
         <div className="hidden lg:flex items-center gap-4 text-slate-500 text-[11px]">
-          <span>LUNAR g: 1.62 m/s²</span>
-          <span>·</span>
-          <span>INTEGRATION: Semi-Implicit Euler</span>
+          <span>SECTOR: {currentLevel.padLabel}</span>
           <span>·</span>
           <span>P = Pause · R = Restart</span>
         </div>
@@ -520,7 +564,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
             </div>
           )}
 
-          {/* Touch/Mouse On-Screen Flight Controls Overlay for Quick Interaction */}
+          {/* Touch/Mouse On-Screen Flight Controls Overlay */}
           <div className="absolute bottom-6 left-6 flex items-center gap-3 z-10">
             <button
               onMouseDown={() => (inputRef.current.rotateLeft = true)}
@@ -562,7 +606,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
           {/* Coordinate Badge */}
           <div className="absolute top-4 left-4 p-2 bg-slate-950/80 border border-slate-800 rounded-lg text-[10px] font-mono text-slate-400 backdrop-blur-sm pointer-events-none">
             <div>POSITION: [{Math.round(landerState.position.x)}, {Math.round(landerState.position.y)}]</div>
-            <div>STATUS: {landerState.status}</div>
+            <div>LEVEL: 0{currentLevel.id} · STATUS: {landerState.status}</div>
           </div>
 
           {/* PAUSED MODAL OVERLAY */}
@@ -577,7 +621,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
                     Simulation Paused
                   </h3>
                   <p className="text-xs text-slate-400 font-mono mt-1">
-                    Flight computer frozen. Ready to resume or restart descent trajectory.
+                    Level 0{currentLevel.id}: {currentLevel.name}
                   </p>
                 </div>
                 <div className="space-y-2 pt-2">
@@ -593,7 +637,19 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
                     className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <RotateCcw className="w-4 h-4 text-slate-400" />
-                    <span>Restart Descent (R)</span>
+                    <span>Restart Sector (R)</span>
+                  </button>
+                  <button
+                    onClick={onOpenLevelSelect}
+                    className="w-full py-2 px-4 bg-slate-900 hover:bg-slate-800 text-cyan-300 text-xs font-semibold uppercase tracking-wider rounded-xl border border-slate-800 transition-colors cursor-pointer"
+                  >
+                    Choose Different Sector
+                  </button>
+                  <button
+                    onClick={onOpenTransformLab}
+                    className="w-full py-2 px-4 bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-semibold uppercase tracking-wider rounded-xl border border-slate-800 transition-colors cursor-pointer"
+                  >
+                    Open CG Transform Lab
                   </button>
                   <button
                     onClick={onReturnToMenu}
@@ -608,69 +664,105 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
 
           {/* TOUCHDOWN SUCCESS MODAL OVERLAY */}
           {landerState.status === 'LANDED' && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-              <div className="bg-[#07131e] border border-emerald-500/50 rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
-                    <CheckCircle2 className="w-7 h-7" />
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+              <div className="bg-[#07131e] border border-emerald-500/50 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                      <CheckCircle2 className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold tracking-wider block">
+                        LEVEL 0{currentLevel.id} COMPLETE · {currentLevel.sector}
+                      </span>
+                      <h3 className="text-xl font-extrabold text-white uppercase tracking-tight">
+                        Touchdown Confirmed
+                      </h3>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold tracking-wider block">
-                      TRANQUILLITY BASE · SITE ALPHA
-                    </span>
-                    <h3 className="text-xl font-extrabold text-white uppercase tracking-tight">
-                      Touchdown Confirmed
-                    </h3>
-                  </div>
+
+                  {landingScore && (
+                    <div className="text-right font-mono bg-emerald-950/60 border border-emerald-800 px-3 py-1.5 rounded-lg">
+                      <span className="text-[10px] text-slate-400 block uppercase">Mission Score</span>
+                      <span className="text-lg font-bold text-emerald-300">
+                        {landingScore.totalScore.toLocaleString()} PTS
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-xs text-slate-300 leading-relaxed bg-emerald-950/40 p-3 rounded-lg border border-emerald-800/60 font-mono">
                   {landerState.landingMessage}
                 </p>
 
-                {/* Performance Metrics Breakdown */}
-                <div className="grid grid-cols-3 gap-2 text-xs font-mono pt-1">
-                  <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">DESCENT RATE</span>
-                    <span className="text-emerald-400 font-bold text-sm">
-                      {vyMs.toFixed(2)} m/s
-                    </span>
-                    <span className="text-[9px] text-slate-500 block">Limit ≤ 3.2</span>
+                {/* Score breakdown metrics */}
+                {landingScore && (
+                  <div className="p-3 bg-slate-900/90 rounded-lg border border-slate-800 space-y-1.5 font-mono text-[11px]">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Fuel Remaining ({landerState.fuel.toFixed(1)}%):</span>
+                      <span className="text-emerald-400">+{landingScore.fuelScore} pts</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Soft Descent ({vyMs.toFixed(2)} m/s):</span>
+                      <span className="text-emerald-400">+{landingScore.descentRateScore} pts</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Lateral Stability ({Math.abs(vxMs).toFixed(2)} m/s):</span>
+                      <span className="text-emerald-400">+{landingScore.lateralDriftScore} pts</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-1 text-[10px]">
+                      <span>Difficulty Multiplier ({currentLevel.difficulty}):</span>
+                      <span className="text-amber-400 font-bold">×{landingScore.difficultyMultiplier.toFixed(1)}</span>
+                    </div>
                   </div>
+                )}
 
-                  <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">LATERAL DRIFT</span>
-                    <span className="text-emerald-400 font-bold text-sm">
-                      {Math.abs(vxMs).toFixed(2)} m/s
-                    </span>
-                    <span className="text-[9px] text-slate-500 block">Limit ≤ 1.8</span>
+                {/* Navigation Actions */}
+                <div className="space-y-2 pt-1">
+                  {nextLevel ? (
+                    <button
+                      onClick={() => onSelectLevel(nextLevel)}
+                      className="w-full py-3 px-4 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    >
+                      <span>Proceed to Level 0{nextLevel.id}: {nextLevel.name}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl text-center space-y-1">
+                      <div className="flex items-center justify-center gap-1.5 text-xs font-mono font-bold text-amber-300">
+                        <Sparkles className="w-4 h-4" />
+                        <span>ALL 3 SECTORS CONQUERED!</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono block">
+                        Master Lunar Pilot Certification Achieved.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={restartSimulation}
+                      className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Replay Level</span>
+                    </button>
+
+                    <button
+                      onClick={onOpenLevelSelect}
+                      className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Level Select</span>
+                    </button>
+
+                    <button
+                      onClick={onReturnToMenu}
+                      className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-semibold uppercase tracking-wider rounded-xl border border-slate-800 transition-colors cursor-pointer"
+                    >
+                      Menu
+                    </button>
                   </div>
-
-                  <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">FUEL RESERVE</span>
-                    <span className="text-cyan-400 font-bold text-sm">
-                      {landerState.fuel.toFixed(1)}%
-                    </span>
-                    <span className="text-[9px] text-slate-500 block">Safe margin</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    onClick={restartSimulation}
-                    className="flex-1 py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <RotateCcw className="w-4 h-4 fill-slate-950" />
-                    <span>Fly Again (R)</span>
-                  </button>
-
-                  <button
-                    onClick={onReturnToMenu}
-                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-colors cursor-pointer"
-                  >
-                    Main Menu
-                  </button>
                 </div>
               </div>
             </div>
@@ -679,14 +771,14 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
           {/* CRASH FAILURE MODAL OVERLAY */}
           {landerState.status === 'CRASHED' && (
             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-              <div className="bg-[#180a0c] border border-rose-500/50 rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="bg-[#180a0c] border border-rose-500/50 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
                     <AlertTriangle className="w-7 h-7" />
                   </div>
                   <div>
                     <span className="text-[10px] font-mono uppercase text-rose-400 font-bold tracking-wider block">
-                      MISSION FAILURE · IMPACT RECORDED
+                      LEVEL 0{currentLevel.id} FAILURE · IMPACT RECORDED
                     </span>
                     <h3 className="text-xl font-extrabold text-white uppercase tracking-tight">
                       Lander Destroyed
@@ -726,7 +818,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-2 pt-2">
                   <button
                     onClick={restartSimulation}
                     className="flex-1 py-3 px-4 bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-rose-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -736,10 +828,17 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
                   </button>
 
                   <button
-                    onClick={onReturnToMenu}
-                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-colors cursor-pointer"
+                    onClick={onOpenLevelSelect}
+                    className="px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-colors cursor-pointer"
                   >
-                    Main Menu
+                    Sectors
+                  </button>
+
+                  <button
+                    onClick={onReturnToMenu}
+                    className="px-3.5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs uppercase tracking-wider rounded-xl border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    Menu
                   </button>
                 </div>
               </div>
@@ -750,16 +849,16 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
         {/* Right Telemetry & Avionics HUD Sidebar */}
         <aside className="w-full lg:w-80 bg-[#070b16] border-t lg:border-t-0 lg:border-l border-slate-800 p-4 space-y-4 flex flex-col justify-between overflow-y-auto max-h-[42vh] lg:max-h-full shrink-0">
           <div className="space-y-4">
-            {/* Header */}
+            {/* Header with Level Accent */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <span className="text-xs font-mono text-cyan-400 font-bold uppercase flex items-center gap-1.5">
+              <span className={`text-xs font-mono font-bold uppercase flex items-center gap-1.5 ${currentLevel.theme.hudAccentColor}`}>
                 <Gauge className="w-3.5 h-3.5" />
                 Descent Avionics HUD
               </span>
               <span
                 className={`text-[10px] font-mono px-2 py-0.5 rounded border font-semibold ${
                   landerState.status === 'FLYING'
-                    ? 'text-cyan-400 bg-cyan-950/60 border-cyan-800'
+                    ? `${currentLevel.theme.hudAccentColor} ${currentLevel.theme.hudBadgeBg} ${currentLevel.theme.hudBorderColor}`
                     : landerState.status === 'LANDED'
                     ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800'
                     : landerState.status === 'CRASHED'
