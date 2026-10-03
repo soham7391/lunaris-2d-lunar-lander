@@ -70,7 +70,7 @@ export const ProjectSpecsModal: React.FC<ProjectSpecsModalProps> = ({ isOpen, on
               <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800/80">
                 <span className="font-semibold text-slate-100 block mb-1">Renderer Subsystem</span>
                 <span className="text-xs text-slate-400">
-                  Separated modules for Lunar Lander vector geometry, piecewise terrain profiles, world coordinate grids, and twinkling starfields.
+                  Pure Canvas 2D modules for Apollo LEM vector geometry, piecewise terrain profiles, world coordinate grids, and twinkling starfields.
                 </span>
               </div>
               <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800/80">
@@ -80,15 +80,15 @@ export const ProjectSpecsModal: React.FC<ProjectSpecsModalProps> = ({ isOpen, on
                 </span>
               </div>
               <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800/80">
-                <span className="font-semibold text-slate-100 block mb-1">Upcoming: Physics Integrator</span>
+                <span className="font-semibold text-emerald-400 block mb-1">Physics Integrator (Active)</span>
                 <span className="text-xs text-slate-400">
-                  Symplectic Euler/Verlet integration of lunar gravity (1.62 m/s²), variable engine thrust, and moment of inertia angular acceleration.
+                  Semi-implicit Euler integration of lunar gravity (1.62 m/s²), vector main engine thrust, attitude roll torque, and fuel mass depletion.
                 </span>
               </div>
               <div className="p-3 bg-slate-900/60 rounded-lg border border-slate-800/80">
-                <span className="font-semibold text-slate-100 block mb-1">Upcoming: Collision Solver</span>
+                <span className="font-semibold text-emerald-400 block mb-1">Collision & Landing Solver (Active)</span>
                 <span className="text-xs text-slate-400">
-                  Line segment intersection tests against piecewise terrain polygons to detect pad touchdowns vs. catastrophic crag impacts.
+                  Multi-vertex model transformation testing footpads, nozzle, and cabin against piecewise terrain and landing pad envelope limits.
                 </span>
               </div>
             </div>
@@ -98,19 +98,33 @@ export const ProjectSpecsModal: React.FC<ProjectSpecsModalProps> = ({ isOpen, on
           <div className="space-y-2">
             <h3 className="text-base font-semibold text-emerald-400 flex items-center gap-2">
               <Compass className="w-4 h-4" />
-              03. Real-Time Telemetry & Coordinate Systems
+              03. Real-Time Telemetry & Calibrated Flight Envelope
             </h3>
             <p className="text-slate-300 leading-relaxed text-xs">
-              World coordinate space maps origin <code className="text-cyan-300 font-mono">[0, 0]</code> to the top-left with gravity acting in <code className="text-cyan-300 font-mono">+Y</code>, while the local lander frame anchors at the center of mass with forward axis aligned to <code className="text-cyan-300 font-mono">-Y</code>.
+              World coordinate space maps origin <code className="text-cyan-300 font-mono">[0, 0]</code> to the top-left with lunar gravity acting along <code className="text-cyan-300 font-mono">+Y</code> (<code className="text-cyan-300 font-mono">18 px/s²</code>), while the local lander frame anchors at the center of mass with main engine thrust pointing along <code className="text-cyan-300 font-mono">-Y</code>.
             </p>
+            <div className="grid grid-cols-3 gap-2 pt-1 font-mono text-xs">
+              <div className="p-2.5 bg-slate-900/90 rounded border border-slate-800">
+                <span className="text-[10px] text-slate-500 block">DESCENT LIMIT</span>
+                <span className="text-emerald-400 font-bold">Vy ≤ 3.2 m/s</span>
+              </div>
+              <div className="p-2.5 bg-slate-900/90 rounded border border-slate-800">
+                <span className="text-[10px] text-slate-500 block">DRIFT LIMIT</span>
+                <span className="text-emerald-400 font-bold">Vx ≤ 1.8 m/s</span>
+              </div>
+              <div className="p-2.5 bg-slate-900/90 rounded border border-slate-800">
+                <span className="text-[10px] text-slate-500 block">TILT LIMIT</span>
+                <span className="text-emerald-400 font-bold">|θ| ≤ 10.0°</span>
+              </div>
+            </div>
           </div>
 
-          {/* Scaffold Status Notice */}
-          <div className="flex items-start gap-3 p-3.5 bg-cyan-950/40 border border-cyan-800/60 rounded-lg text-cyan-200 text-xs">
-            <ShieldAlert className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+          {/* Calibrated Flight Status Notice */}
+          <div className="flex items-start gap-3 p-3.5 bg-emerald-950/40 border border-emerald-800/60 rounded-lg text-emerald-200 text-xs">
+            <ShieldAlert className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold block mb-0.5">Scaffold Stage 01 Notice:</span>
-              This stage delivers the visual foundation, vector graphics modules, and navigation scaffold. Physics integration and collision resolution will be attached in the subsequent engineering phase.
+              <span className="font-semibold block mb-0.5">Beginner-Tuned Flight Mechanics:</span>
+              Descent gravity, engine thrust-to-weight ratio (2.67:1), attitude rotation damping, and landing pad width (28% viewport) are calibrated to ensure a rewarding, controllable lunar descent while preserving strict Newtonian equations.
             </div>
           </div>
         </div>

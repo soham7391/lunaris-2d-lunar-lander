@@ -19,9 +19,9 @@ export function generateTerrain(width: number, height: number): TerrainProfile {
   const segments = 32;
   const step = width / segments;
 
-  // Designate landing pad location (around 45% to 65% of viewport width)
-  const padStartX = Math.floor(width * 0.42);
-  const padEndX = Math.floor(width * 0.58);
+  // Designate landing pad location (wide beginner-friendly pad ~28% of viewport)
+  const padStartX = Math.floor(width * 0.36);
+  const padEndX = Math.floor(width * 0.64);
   const padY = height * 0.78;
 
   const landingPad: LandingPad = {

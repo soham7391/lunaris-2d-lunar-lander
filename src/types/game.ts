@@ -6,6 +6,8 @@
 
 export type GameView = 'MENU' | 'BRIEFING' | 'SIMULATION';
 
+export type SimulationStatus = 'FLYING' | 'LANDED' | 'CRASHED' | 'PAUSED';
+
 export interface Vector2D {
   x: number;
   y: number;
@@ -45,7 +47,7 @@ export interface TelemetryData {
   pitchAngle: number; // degrees
   fuelPercent: number; // 0 - 100
   throttlePercent: number; // 0 - 100
-  status: 'STANDBY' | 'NOMINAL' | 'WARNING' | 'CRITICAL';
+  status: SimulationStatus;
 }
 
 export interface CGDebugOptions {

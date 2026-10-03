@@ -128,18 +128,18 @@ export const MissionBriefing: React.FC<MissionBriefingProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div className="p-3 bg-slate-950/70 rounded-lg border border-slate-800">
                 <span className="text-slate-400 text-xs block mb-1">Vertical Descent (Vy)</span>
-                <span className="text-lg font-bold font-mono text-emerald-400">≤ 2.0 m/s</span>
+                <span className="text-lg font-bold font-mono text-emerald-400">≤ 3.2 m/s</span>
                 <span className="text-[10px] text-slate-500 block mt-1">Nominal gear tolerance</span>
               </div>
               <div className="p-3 bg-slate-950/70 rounded-lg border border-slate-800">
                 <span className="text-slate-400 text-xs block mb-1">Lateral Drift (Vx)</span>
-                <span className="text-lg font-bold font-mono text-emerald-400">≤ 1.0 m/s</span>
+                <span className="text-lg font-bold font-mono text-emerald-400">≤ 1.8 m/s</span>
                 <span className="text-[10px] text-slate-500 block mt-1">Prevents tipping shear</span>
               </div>
               <div className="p-3 bg-slate-950/70 rounded-lg border border-slate-800">
                 <span className="text-slate-400 text-xs block mb-1">Attitude Pitch (θ)</span>
-                <span className="text-lg font-bold font-mono text-emerald-400">≤ 5.0°</span>
-                <span className="text-[10px] text-slate-500 block mt-1">Perpendicular to horizon</span>
+                <span className="text-lg font-bold font-mono text-emerald-400">≤ 10.0°</span>
+                <span className="text-[10px] text-slate-500 block mt-1">Safe gear baseline</span>
               </div>
             </div>
           </div>
@@ -174,11 +174,16 @@ export const MissionBriefing: React.FC<MissionBriefingProps> = ({
               </div>
 
               <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80">
-                <span className="text-slate-300 font-medium">Engine Cutoff / Kill Throttle</span>
+                <span className="text-slate-300 font-medium">Pause / Resume Flight</span>
                 <div className="flex items-center gap-1.5 font-mono">
-                  <kbd className="px-2 py-1 bg-slate-800 text-amber-300 rounded border border-slate-700">X</kbd>
-                  <span className="text-slate-500">/</span>
-                  <kbd className="px-2 py-1 bg-slate-800 text-amber-300 rounded border border-slate-700">S</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 text-amber-300 rounded border border-slate-700">P</kbd>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80">
+                <span className="text-slate-300 font-medium">Restart Simulation Descent</span>
+                <div className="flex items-center gap-1.5 font-mono">
+                  <kbd className="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">R</kbd>
                 </div>
               </div>
 
