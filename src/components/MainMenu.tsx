@@ -257,14 +257,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       {/* Main Hero View: Clean, Balanced, Uncluttered Left Alignment */}
       <main className="relative z-10 flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 max-w-7xl mx-auto w-full py-12 pointer-events-none">
         <div className="max-w-xl lg:max-w-2xl space-y-6 pointer-events-auto">
-          {/* Mission Tag / Kicker */}
-          <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-800/40 backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-[11px] font-mono tracking-widest text-cyan-300 uppercase font-semibold">
-              APOLLO FLIGHT SIMULATOR · COMPUTER GRAPHICS CAPSTONE
-            </span>
-          </div>
-
           {/* Cinematic Title & Subtitle */}
           <div className="space-y-2">
             <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-[0.2em] sm:tracking-[0.24em] text-white uppercase drop-shadow-2xl leading-none">

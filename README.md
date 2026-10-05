@@ -162,6 +162,8 @@ and tests for penetration ($y_{\text{point}} \ge y_{\text{ground}}(x)$).
 
 ```
 .
+├── docs/
+│   └── CG_CONCEPTS.md              # Detailed CG transformations, matrix proofs, and physics
 ├── index.html                      # HTML5 entry point and viewport configuration
 ├── metadata.json                   # Applet project metadata and capabilities
 ├── package.json                    # Project dependencies, build, and lint scripts
