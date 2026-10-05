@@ -268,9 +268,9 @@ export const SimulationView: React.FC<SimulationViewProps> = ({
 
         // Trigger score calculation and progressive unlock if landed
         if (nextState.status === 'LANDED') {
-          const vy = nextState.velocity.y / SIMULATION_CONFIG.PIXELS_PER_METER;
-          const vx = Math.abs(nextState.velocity.x) / SIMULATION_CONFIG.PIXELS_PER_METER;
-          const tilt = Math.abs((nextState.rotation * 180) / Math.PI);
+          const vy = nextState.touchdownMetrics?.vyMs ?? (nextState.velocity.y / SIMULATION_CONFIG.PIXELS_PER_METER);
+          const vx = nextState.touchdownMetrics?.vxMs ?? (Math.abs(nextState.velocity.x) / SIMULATION_CONFIG.PIXELS_PER_METER);
+          const tilt = nextState.touchdownMetrics?.tiltDeg ?? Math.abs((nextState.rotation * 180) / Math.PI);
           const score = calculateMissionScore(nextState.fuel, vy, vx, tilt, currentLevel);
           setLandingScore(score);
 

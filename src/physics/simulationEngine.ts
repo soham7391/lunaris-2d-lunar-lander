@@ -75,6 +75,11 @@ export interface LanderPhysicsState {
   isRotatingRight: boolean;
   status: SimulationStatus;
   landingMessage: string;
+  touchdownMetrics?: {
+    vyMs: number;
+    vxMs: number;
+    tiltDeg: number;
+  };
   collisionDetails?: {
     impactPoint: Vector2D;
     partName: string;
@@ -403,6 +408,11 @@ export function checkCollisionsAndLanding(
       throttle: 0,
       isThrusting: false,
       status: 'LANDED',
+      touchdownMetrics: {
+        vyMs: vVerticalMs,
+        vxMs: vHorizontalMs,
+        tiltDeg: tiltDeg,
+      },
       landingMessage: `TOUCHDOWN NOMINAL: Tranquillity Base confirmed! Descent rate ${vVerticalMs.toFixed(2)} m/s, lateral drift ${vHorizontalMs.toFixed(2)} m/s, tilt ${tiltDeg.toFixed(1)}°.`,
     };
   }

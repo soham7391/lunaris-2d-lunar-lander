@@ -85,6 +85,26 @@ LUNARIS is a browser-based 2D Lunar Landing Simulation and Computer Graphics lab
    npm run lint
    ```
 
+### Docker Containerization (Production)
+
+The application includes a multi-stage Docker setup with an optimized Nginx web server configured for client-side SPA routing:
+
+1. **Build the production Docker image**:
+   ```bash
+   docker build -t lunaris .
+   ```
+
+2. **Run the production container**:
+   ```bash
+   docker run -d -p 8080:80 --name lunaris-sim lunaris
+   ```
+   Open `http://localhost:8080` in your web browser.
+
+3. **Stop the container**:
+   ```bash
+   docker stop lunaris-sim && docker rm lunaris-sim
+   ```
+
 ---
 
 ## 4. Gameplay Controls & Landing Rules
@@ -164,6 +184,9 @@ and tests for penetration ($y_{\text{point}} \ge y_{\text{ground}}(x)$).
 .
 ├── docs/
 │   └── CG_CONCEPTS.md              # Detailed CG transformations, matrix proofs, and physics
+├── .dockerignore                   # Docker build exclusions
+├── Dockerfile                      # Multi-stage production container build (Node.js + Nginx)
+├── nginx.conf                      # Production Nginx web server configuration with SPA fallback
 ├── index.html                      # HTML5 entry point and viewport configuration
 ├── metadata.json                   # Applet project metadata and capabilities
 ├── package.json                    # Project dependencies, build, and lint scripts
