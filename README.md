@@ -2,6 +2,7 @@
 
 LUNARIS is a browser-based 2D Lunar Landing Simulation and Computer Graphics laboratory built with TypeScript, React, and the HTML5 Canvas 2D API. The application simulates the terminal descent and touchdown phase of an Apollo-style Lunar Excursion Module (LEM) across procedurally generated lunar topography, enforcing Newtonian kinematics, rotational inertia, fuel depletion, and strict landing envelopes. It also includes an interactive Computer Graphics Transformation Laboratory for studying 2D affine matrix operations in homogeneous coordinates.
 
+Try it at: lunaris-2d-lunar-lander.soham-dugade24.workers.dev
 ---
 
 ## 1. Project Objectives & Key Features
@@ -116,7 +117,7 @@ The application includes a multi-stage Docker setup with an optimized Nginx web 
 | **Main Engine Thrust** | `W` | `Up Arrow` / `Space` | On-screen "Thrust" Button |
 | **Roll Attitude Port (Counter-Clockwise)** | `A` | `Left Arrow` | On-screen "A" Button |
 | **Roll Attitude Starboard (Clockwise)** | `D` | `Right Arrow` | On-screen "D" Button |
-| **Pause / Resume Simulation** | `P` | — | Top Bar "Pause" Button |
+| **Pause / Resume Simulation** | `P` | — | Top Bar "Pause" Button |  
 | **Restart Current Sector** | `R` | — | Top Bar "Restart" Button |
 | **Toggle Coordinate Grid Overlay** | `G` | — | Top Bar "Grid" Button |
 
@@ -234,40 +235,9 @@ and tests for penetration ($y_{\text{point}} \ge y_{\text{ground}}(x)$).
 
 ---
 
-## 8. Screenshot Placeholders
-
-*Place project screenshots in an `assets/screenshots/` folder (or equivalent) and link them below:*
-
-1. **Cinematic Main Menu**
-   ![Main Menu Placeholder](docs/screenshots/main_menu.png)
-   *Figure 1: Full-screen deep space environment, rotating lunar sphere, and orbiting probe.*
-
-2. **Descent Simulation Gameplay**
-   ![Simulation Gameplay Placeholder](docs/screenshots/gameplay.png)
-   *Figure 2: Active descent over Mare Tranquillitatis with live telemetry and guidance HUD.*
-
-3. **Touchdown Mission Success Screen**
-   ![Level Complete Placeholder](docs/screenshots/touchdown_success.png)
-   *Figure 3: Mission scoring breakdown, performance metrics, and progressive sector unlock.*
-
-4. **CG Transformation Laboratory**
-   ![Transform Lab Placeholder](docs/screenshots/transform_lab.png)
-   *Figure 4: Interactive affine matrix experimentation showing composition and non-commutativity.*
-
 ---
 
-## 9. Team Contributions
-
-| Team Member | Roll / Student ID | Primary Responsibilities & Contributions |
-| :--- | :--- | :--- |
-| **[Student Name 1]** | `[Roll Number 1]` | Physics Engine, Semi-Implicit Euler Integrator, Collision Solver |
-| **[Student Name 2]** | `[Roll Number 2]` | Canvas 2D Vector Rendering (LEM model, Starfield, Procedural Terrain) |
-| **[Student Name 3]** | `[Roll Number 3]` | CG Transform Lab, Matrix Mathematics, Homogeneous Coordinates |
-| **[Student Name 4]** | `[Roll Number 4]` | UI Architecture, Campaign Level System, Telemetry HUD & Scoring |
-
----
-
-## 10. Known Limitations
+## 8. Known Limitations
 
 - **Planar Coordinate Space**: The simulation calculates physics in a localized 2D Cartesian plane and does not account for planetary curvature across orbital scales.
 - **Fixed Center of Mass**: The lander's center of mass is treated as invariant throughout descent, rather than dynamically shifting as propellant mass is consumed.
